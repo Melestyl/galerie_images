@@ -8,7 +8,7 @@ if (isset($_REQUEST["action"])) {
 		case 'Creer' :
 			if (isset($_GET["nomRep"]) && ($_GET["nomRep"] != ""))
 				if (!is_dir("./" . $_GET["nomRep"])) {
-					// A compléter : Code de création d'un répertoire
+					// Crée le répertoire
 					mkdir("./" . $_GET["nomRep"]);
 				}
 			break;
@@ -19,10 +19,10 @@ if (isset($_REQUEST["action"])) {
 					$nomRep = $_GET["nomRep"];
 					$fichier = $_GET["fichier"];
 
-					// A compléter : Supprime le fichier image
+					// Supprime l'image dans le dossier
 					unlink($nomRep . "/" . $fichier);
 
-					// A compléter : Supprime aussi la miniature si elle existe
+					// Supprime aussi la miniature si elle existe
 					unlink($nomRep . "/thumbs/" . $fichier);
 				}
 			break;
@@ -35,7 +35,7 @@ if (isset($_REQUEST["action"])) {
 						$fichier = $_GET["fichier"];
 						$nomFichier = $_GET["nomFichier"]; // nouveau nom
 
-						// A compléter : renomme le fichier et sa miniature si elle existe
+						// Renomme le fichier et sa miniature si elle existe
 						if (file_exists("./$nomRep/$fichier"))
 							rename("./$nomRep/$fichier", "./$nomRep/$nomFichier");
 
@@ -50,35 +50,36 @@ if (isset($_REQUEST["action"])) {
 			if (!empty($_FILES["FileToUpload"])) {
 
 				if (is_uploaded_file($_FILES["FileToUpload"]["tmp_name"])) {
-					//print("Quelques informations sur le fichier récupéré :<br>");
-					//print("Nom : ".$_FILES["FileToUpload"]["name"]."<br>");
-					//print("Type : ".$_FILES["FileToUpload"]["type"]."<br>");
-					//print("Taille : ".$_FILES["FileToUpload"]["size"]."<br>");
-					//print("Tempname : ".$_FILES["FileToUpload"]["tmp_name"]."<br>");
+					/*print("Quelques informations sur le fichier récupéré :<br>");
+					print("Nom : ".$_FILES["FileToUpload"]["name"]."<br>");
+					print("Type : ".$_FILES["FileToUpload"]["type"]."<br>");
+					print("Taille : ".$_FILES["FileToUpload"]["size"]."<br>");
+					print("Tempname : ".$_FILES["FileToUpload"]["tmp_name"]."<br>");*/
+
 					$name = $_FILES["FileToUpload"]["name"];
 					copy($_FILES["FileToUpload"]["tmp_name"], "./$nomRep/$name");
 
-					// créer le répertoire miniature s'il n'existe pas
+					// Crée le répertoire miniature s'il n'existe pas
 					if (!is_dir("./$nomRep/thumbs")) {
 						mkdir("./$nomRep/thumbs");
 					}
 
 					$dataImg = getimagesize("./$nomRep/$name");
-					$type = substr($dataImg["mime"], 6);// on enleve "image/"
+					$type = substr($dataImg["mime"], 6);// on enlève "image/"
 
-					// créer la miniature dans ce répertoire
+					// Crée la miniature dans ce répertoire
 					miniature($type, "./$nomRep/$name", 200, "./$nomRep/thumbs/$name");
 				} else {
-					echo "pb";
+					echo "Erreur lors de l'upload de l'image";
 				}
 			}
 
 			break;
 
 		case 'Supprimer Repertoire':
-			// On ne peut supprimer que des répertoires vide !
+			// On ne peut supprimer que des répertoires vides, il faut donc supprimer les éléments à l'intérieur avant de pouvoir le supprimer
 			if (isset($_GET["nomRep"]) && ($_GET["nomRep"] != "")) {
-				// A compléter : Supprime le répertoire des miniatures s'il existe, puis le répertoire principal
+				// Supprime le répertoire des miniatures s'il existe, puis le répertoire principal
 
 				if (is_dir("./$nomRep/thumbs")) {
 					$rep = opendir("./$nomRep/thumbs");        // ouverture du repertoire
@@ -96,7 +97,7 @@ if (isset($_REQUEST["action"])) {
 					rmdir("./$nomRep/thumbs");
 				}
 
-				// répertoire principal
+				// Répertoire principal
 				$rep = opendir("./$nomRep");        // ouverture du repertoire
 				while ($fichier = readdir($rep))    // parcours de tout le contenu de ce répertoire
 				{
@@ -136,6 +137,8 @@ function miniature($type, $nom, $dw, $nomMin)
 		case "gif" :
 			$im = imagecreatefromgif($nom);
 			break;
+		default:
+			return;
 	}
 
 	$sw = imagesx($im); // largeur de l'image d'origine
@@ -174,7 +177,7 @@ function miniature($type, $nom, $dw, $nomMin)
 
 ?>
 
-<html>
+<html lang="fr">
 <head>
 	<style>
 
@@ -195,7 +198,7 @@ function miniature($type, $nom, $dw, $nomMin)
 
 		div div {
 			position: absolute;
-			bottom: 0px;
+			bottom: 0;
 			width: 100%;
 			background-color: lightgrey;
 			border-top: 1px black solid;
@@ -212,6 +215,7 @@ function miniature($type, $nom, $dw, $nomMin)
 		}
 
 	</style>
+	<title>Galerie d'images !</title>
 </head>
 
 <body>
@@ -280,17 +284,16 @@ while ($fichier = readdir($rep))    // parcours de tout le contenu de ce répert
 				$numImage++;
 				$dataImg = getimagesize("./$nomRep/$fichier");
 
-				// A compléter : récupérer le type d'une image, et sa taille
+				// Récupérer le type d'une image et sa taille
 				$width = $dataImg[0];
 				$height = $dataImg[1];
 				$type = substr($dataImg["mime"], 6);
 
-				// A compléter : On cherche si une miniature existe pour l'afficher...
-				// Si non, on crée éventuellement le répertoire des miniatures,
-				// et la miniature que l'on place dans ce sous-répertoire
+				// On cherche si une miniature existe pour l'afficher...
+				// Sinon, on crée éventuellement le répertoire des miniatures et la miniature que l'on place dans ce sous-répertoire
 
 				echo "<div class=\"mini\">\n";
-				echo "<a target=\"_blank\" href=\"$nomRep/$fichier\"><img src=\"$nomRep/thumbs/$fichier\"/></a>\n";
+				echo "<a target=\"_blank\" href=\"$nomRep/$fichier\"><img src=\"$nomRep/thumbs/$fichier\" alt='$fichier'/></a>\n";
 				echo "<div>$fichier \n";
 				echo "<a href=\"?nomRep=$nomRep&fichier=$fichier&action=Supprimer\" >Supp</a>\n";
 				echo "<br />($width * $height $type)\n";
@@ -306,7 +309,7 @@ while ($fichier = readdir($rep))    // parcours de tout le contenu de ce répert
 
 				echo "</div></div>\n";
 
-				// A compléter : appeler echo "<br style=\"clear:left;\" />"; si on a affiché 5 images sur la ligne actuelle
+				// Appelle echo "<br style=\"clear:left;\" />"; si on a affiché 5 images sur la ligne actuelle
 
 				if (($numImage % 5) == 0)
 					echo "<br style=\"clear:left;\" />";
@@ -318,7 +321,7 @@ while ($fichier = readdir($rep))    // parcours de tout le contenu de ce répert
 }
 closedir($rep);
 
-// A compléter : afficher un message lorsque le répertoire est vide
+// Affiche un message lorsque le répertoire est vide
 if ($numImage == 0) echo "<h3>Aucune image dans le répertoire</h3>";
 
 ?>
