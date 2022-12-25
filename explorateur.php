@@ -1,5 +1,8 @@
 <?php
 
+// TODO: A chaque ajout et suppression d'image, faire les actions nécessaires sur la BDD
+// TODO: A chaque ajout d'image, y ajouter la date et la localisation par-dessus
+
 if (isset($_REQUEST["nomRep"])) $nomRep = $_REQUEST["nomRep"];
 else $nomRep = false;
 
