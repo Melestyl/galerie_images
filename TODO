@@ -1,6 +1,6 @@
-dbLib.php :
+Tom:
 - TODO: Créer des fonctions spécifiques aux actions qu'on peut faire, pour ne pas utiliser des fonctions génériques
-
-explorateur.php :
 - TODO: A chaque ajout et suppression d'image, faire les actions nécessaires sur la BDD
+
+Anael:
 - TODO: A chaque ajout d'image, y ajouter la date et la localisation par-dessus
