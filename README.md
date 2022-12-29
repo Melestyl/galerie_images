@@ -16,3 +16,5 @@ Devoir maison d'école dans lequel il est demandé de pouvoir gérer une galerie
 - Si on doit créer plusieurs dossiers, rajouter un numéro derrière "moixxx/" (ex : "moi52/")
 - Le dossier "tom/" est également ignoré
 
+## Images :
+- Pour trouver des images avec métadonnées EXIF, https://github.com/ianare/exif-samples

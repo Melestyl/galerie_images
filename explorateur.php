@@ -1,18 +1,21 @@
 <?php
 
-// TODO: A chaque ajout et suppression d'image, faire les actions nécessaires sur la BDD
-// TODO: A chaque ajout d'image, y ajouter la date et la localisation par-dessus
+include_once "dbLib.php";
 
 if (isset($_REQUEST["nomRep"])) $nomRep = $_REQUEST["nomRep"];
 else $nomRep = false;
 
 if (isset($_REQUEST["action"])) {
+	$pdo = connectDB();
 	switch ($_REQUEST["action"]) {
 		case 'Creer' :
 			if (isset($_GET["nomRep"]) && ($_GET["nomRep"] != ""))
 				if (!is_dir("./" . $_GET["nomRep"])) {
 					// Crée le répertoire
 					mkdir("./" . $_GET["nomRep"]);
+
+					// On l'ajoute dans la BDD
+					createDirectory($pdo, $_GET["nomRep"]);
 				}
 			break;
 
@@ -24,9 +27,12 @@ if (isset($_REQUEST["action"])) {
 
 					// Supprime l'image dans le dossier
 					unlink($nomRep . "/" . $fichier);
-
 					// Supprime aussi la miniature si elle existe
 					unlink($nomRep . "/thumbs/" . $fichier);
+
+					// Supprime l'entrée dans la BDD
+					$imageID = getImageID($pdo, $fichier, $nomRep);
+					deleteImage($pdo, $imageID);
 				}
 			break;
 
@@ -45,7 +51,9 @@ if (isset($_REQUEST["action"])) {
 						if (file_exists("./$nomRep/thumbs/$fichier"))
 							rename("./$nomRep/thumbs/$fichier", "./$nomRep/thumbs/$nomFichier");
 
-
+						// Met à jour l'entrée dans la BDD
+						$imageID = getImageID($pdo, $fichier, $nomRep);
+						renameImage($pdo, $imageID, $nomFichier);
 					}
 			break;
 
@@ -72,6 +80,10 @@ if (isset($_REQUEST["action"])) {
 
 					// Crée la miniature dans ce répertoire
 					miniature($type, "./$nomRep/$name", 200, "./$nomRep/thumbs/$name");
+
+					// Ajoute les métadonnées dans la BDD et crée l'image en meme temps
+					$metadata = exif_read_data("./$nomRep/$name", 0, true);
+					storeExifData($pdo, $name, $nomRep, $metadata);
 				} else {
 					echo "Erreur lors de l'upload de l'image";
 				}
@@ -114,8 +126,12 @@ if (isset($_REQUEST["action"])) {
 					}
 				}
 
+				// Supprime l'entrée dans la BDD (en supprimant les images associées)
+				deleteDirectory($pdo, $nomRep); // FIXME: ne supprime pas les images dans la BDD
+
 				rmdir("./$nomRep");
 				$nomRep = false;
+
 			}
 			break;
 	}

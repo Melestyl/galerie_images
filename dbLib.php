@@ -1,30 +1,137 @@
 <?php
 // Fichier contenant les functions utiles à l'interaction avec la base de données
 
-// TODO: Créer des fonctions spécifiques aux actions qu'on peut faire, pour ne pas utiliser des fonctions génériques
-
 include_once "config.php";
 
-function SQLSelect($query) {
-	global $HOST, $DB_NAME, $NICKNAME, $PASSWORD; // Nécessaire pour accéder aux variables de config.php
+function connectDB() {
+	// Connexion PDO à la base de données
+	global $DB_NAME, $HOST, $NICKNAME, $PASSWORD;
 
-	$db = new PDO("mysql:host=$HOST;dbname=$DB_NAME", $NICKNAME, $PASSWORD);
-	$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	$result = $db->query($query);
-	$db = null;
-
-	return $result->fetchAll(PDO::FETCH_ASSOC);
+	$dsn = "mysql:host=".$HOST.";dbname=".$DB_NAME.";charset=utf8";
+	$pdo = new PDO($dsn, $NICKNAME, $PASSWORD);
+	$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	return $pdo;
 }
 
-function SQLInsert($query) {
-	global $HOST, $DB_NAME, $NICKNAME, $PASSWORD; // Nécessaire pour accéder aux variables de config.php
+function createDirectory($pdo, $directory) {
+	// Crée un répertoire dans la base de données
 
-	$db = new PDO("mysql:host=$HOST;dbname=$DB_NAME", $NICKNAME, $PASSWORD);
-	$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	$result = $db->query($query);
-	$db = null;
+	$sql = "INSERT INTO REPERTOIRE (nom) VALUES (:nom)";
+	$stmt = $pdo->prepare($sql);
+	$stmt->bindParam(':nom', $directory);
+	$stmt->execute();
 }
 
-function SQLUpdate($query) {
-	SQLInsert($query); // La fonction SQLUpdate est identique à SQLInsert, mais son nom diffère pour des raisons de compréhension
+function getDirectoryID($pdo, $directory) {
+	// Retourne l'ID du répertoire passé en paramètre
+
+	$sql = "SELECT id FROM REPERTOIRE WHERE nom = :directory";
+	$stmt = $pdo->prepare($sql);
+	$stmt->bindParam(":directory", $directory);
+	$stmt->execute();
+	$result = $stmt->fetch(PDO::FETCH_ASSOC);
+	return $result["id"];
+}
+
+function deleteDirectory($pdo, $directory) {
+	// Supprime un répertoire de la base de données
+
+	// Récupère toutes les images du répertoire pour les supprimer de la table IMAGE (pour éviter les erreurs de clé étrangère)
+	$sql = "SELECT id FROM IMAGE WHERE repertoire = :directory";
+	$stmt = $pdo->prepare($sql);
+	$stmt->bindParam(":directory", $directory);
+	$stmt->execute();
+	// Supprime les images du répertoire
+	while ($result = $stmt->fetch(PDO::FETCH_ASSOC)) {
+		deleteImage($pdo, $result["id"]);
+	}
+
+	// Supprime le répertoire
+	$sql = "DELETE FROM REPERTOIRE WHERE nom = :nom";
+	$stmt = $pdo->prepare($sql);
+	$stmt->bindParam(':nom', $directory);
+	$stmt->execute();
+}
+
+function createImage($pdo, $image, $directory) {
+	// Crée une image dans la BDD
+
+	// On récupère l'ID du répertoire
+	$directoryID = getDirectoryID($pdo, $directory);
+
+	// On crée l'image dans la base de données
+	$sql = "INSERT INTO IMAGE (nom, repertoire) VALUES (:imageName, :directory)";
+	$stmt = $pdo->prepare($sql);
+	$stmt->bindParam(":imageName", $image);
+	$stmt->bindParam(":directory", $directoryID);
+	$stmt->execute();
+
+	// On récupère l'ID de l'image
+	$imageID = $pdo->lastInsertId(); // FIXME: Vérifier que ça marche
+
+	return $imageID;
+}
+
+function renameImage($pdo, $image, $newName) {
+	// Renomme une image dans la base de données
+
+	$sql = "UPDATE IMAGE SET nom = :newName WHERE id = :image";
+	$stmt = $pdo->prepare($sql);
+	$stmt->bindParam(":newName", $newName);
+	$stmt->bindParam(":image", $image);
+	$stmt->execute();
+}
+
+function getImageID($pdo, $image, $directory) {
+	// Retourne l'ID de l'image
+
+	// On récupère l'ID du répertoire
+	$directoryID = getDirectoryID($pdo, $directory);
+
+	$sql = "SELECT id FROM IMAGE WHERE nom = :image AND repertoire = :directory";
+	$stmt = $pdo->prepare($sql);
+	$stmt->bindParam(":image", $image);
+	$stmt->bindParam(":directory", $directoryID);
+	$stmt->execute();
+	$result = $stmt->fetch(PDO::FETCH_ASSOC);
+	return $result["id"];
+}
+
+function storeExifData($pdo, $image, $directory, $metadataArray) {
+	// Stocke les données exif dans la base de données
+
+	$imageID = createImage($pdo, $image, $directory);
+	echo "Image ID: ".$imageID;
+
+	if (!isset($metadataArray["EXIF"]))
+		return;
+	// On stocke les données exif dans la base de données
+	foreach ($metadataArray["EXIF"] as $key => $value) {
+		$sql = "INSERT INTO METADONNEE (cle, valeur, image) VALUES (:key, :value, :image)";
+		$stmt = $pdo->prepare($sql);
+		$stmt->bindParam(":key", $key);
+		$stmt->bindParam(":value", $value);
+		$stmt->bindParam(":image", $imageID);
+		$stmt->execute();
+	}
+}
+
+function deleteExifData($pdo, $imageID) {
+	// Supprime les données exif d'une image
+
+	$sql = "DELETE FROM METADONNEE WHERE image = :image";
+	$stmt = $pdo->prepare($sql);
+	$stmt->bindParam(":image", $imageID);
+	$stmt->execute();
+}
+
+function deleteImage($pdo, $imageID) {
+	// Supprime une image de la base de données
+
+	deleteExifData($pdo, $imageID);
+
+	$sql = "DELETE FROM IMAGE WHERE id = :imageID";
+	$stmt = $pdo->prepare($sql);
+	$stmt->bindParam(":imageID", $imageID);
+	$stmt->execute();
 }

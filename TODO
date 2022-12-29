@@ -1,5 +1,4 @@
 Tom:
-- TODO: Créer des fonctions spécifiques aux actions qu'on peut faire, pour ne pas utiliser des fonctions génériques
 - TODO: A chaque ajout et suppression d'image, faire les actions nécessaires sur la BDD
 
 Anael:
