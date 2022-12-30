@@ -127,7 +127,7 @@ if (isset($_REQUEST["action"])) {
 				}
 
 				// Supprime l'entrée dans la BDD (en supprimant les images associées)
-				deleteDirectory($pdo, $nomRep); // FIXME: ne supprime pas les images dans la BDD
+				deleteDirectory($pdo, $nomRep);
 
 				rmdir("./$nomRep");
 				$nomRep = false;

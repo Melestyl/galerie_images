@@ -37,7 +37,7 @@ function deleteDirectory($pdo, $directory) {
 	// Supprime un répertoire de la base de données
 
 	// Récupère toutes les images du répertoire pour les supprimer de la table IMAGE (pour éviter les erreurs de clé étrangère)
-	$sql = "SELECT id FROM IMAGE WHERE repertoire = :directory";
+	$sql = "SELECT id FROM IMAGE WHERE repertoire = (SELECT id FROM REPERTOIRE WHERE nom = :directory)";
 	$stmt = $pdo->prepare($sql);
 	$stmt->bindParam(":directory", $directory);
 	$stmt->execute();
@@ -67,7 +67,7 @@ function createImage($pdo, $image, $directory) {
 	$stmt->execute();
 
 	// On récupère l'ID de l'image
-	$imageID = $pdo->lastInsertId(); // FIXME: Vérifier que ça marche
+	$imageID = $pdo->lastInsertId();
 
 	return $imageID;
 }
@@ -101,18 +101,27 @@ function storeExifData($pdo, $image, $directory, $metadataArray) {
 	// Stocke les données exif dans la base de données
 
 	$imageID = createImage($pdo, $image, $directory);
-	echo "Image ID: ".$imageID;
 
 	if (!isset($metadataArray["EXIF"]))
 		return;
+
 	// On stocke les données exif dans la base de données
-	foreach ($metadataArray["EXIF"] as $key => $value) {
-		$sql = "INSERT INTO METADONNEE (cle, valeur, image) VALUES (:key, :value, :image)";
-		$stmt = $pdo->prepare($sql);
-		$stmt->bindParam(":key", $key);
-		$stmt->bindParam(":value", $value);
-		$stmt->bindParam(":image", $imageID);
-		$stmt->execute();
+	foreach ($metadataArray as $name => $subarray) {
+		foreach ($subarray as $key => $value) {
+			$key = $name.'_'.$key;
+
+			if (is_array($value)) // Utile pour le sous-tableau GPS, car il contient des sous-tableaux
+				$value = implode(", ", $value);
+
+			$value = substr($value, 0, 100); // Pour tronquer la chaine de caractère à 100 caractères, sinon erreur de longueur de chaine
+
+			$sql = "INSERT INTO METADONNEE (cle, valeur, image) VALUES (:key, :value, :image)";
+			$stmt = $pdo->prepare($sql);
+			$stmt->bindParam(":key", $key);
+			$stmt->bindParam(":value", $value);
+			$stmt->bindParam(":image", $imageID);
+			$stmt->execute();
+		}
 	}
 }
 
