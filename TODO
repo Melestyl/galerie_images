@@ -1,4 +1,5 @@
 Tom:
+- TODO: Lorsqu'il y a des coordonnées GPS, faire un appel API pour récupérer la position
 
 Anael:
 - TODO: A chaque ajout d'image, y ajouter la date et la localisation par-dessus
