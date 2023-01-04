@@ -1,5 +1,6 @@
 <?php
 
+
 include_once "dbLib.php";
 
 if (isset($_REQUEST["nomRep"])) $nomRep = $_REQUEST["nomRep"];
@@ -69,6 +70,7 @@ if (isset($_REQUEST["action"])) {
 
 					$name = $_FILES["FileToUpload"]["name"];
 					copy($_FILES["FileToUpload"]["tmp_name"], "./$nomRep/$name");
+					$metadata = exif_read_data("./$nomRep/$name", 0, true);
 
 					// Crée le répertoire miniature s'il n'existe pas
 					if (!is_dir("./$nomRep/thumbs")) {
@@ -79,10 +81,10 @@ if (isset($_REQUEST["action"])) {
 					$type = substr($dataImg["mime"], 6);// on enlève "image/"
 
 					// Crée la miniature dans ce répertoire
-					miniature($type, "./$nomRep/$name", 200, "./$nomRep/thumbs/$name");
+					miniature($type, "./$nomRep/$name", 200, "./$nomRep/thumbs/$name","./$nomRep/$name",$dataImg,$metadata['EXIF']['DateTimeDigitized'],$metadata['GPS']['GPSLatitude'],$metadata['GPS']['GPSLatitudeRef'],$metadata['GPS']['GPSLongitude'],$metadata['GPS']['GPSLongitudeRef']);
 
 					// Ajoute les métadonnées dans la BDD et crée l'image en meme temps
-					$metadata = exif_read_data("./$nomRep/$name", 0, true);
+					
 					storeExifData($pdo, $name, $nomRep, $metadata);
 				} else {
 					echo "Erreur lors de l'upload de l'image";
@@ -138,7 +140,7 @@ if (isset($_REQUEST["action"])) {
 }
 
 
-function miniature($type, $nom, $dw, $nomMin)
+function miniature($type, $nom, $dw, $nomMin, $nomMin2 , $dataImg , $date, $latitude,$latitudeRef,$longitude,$longitudeRef)
 {
 	// Crée une miniature de l'image $nom
 	// de largeur $dw
@@ -164,18 +166,119 @@ function miniature($type, $nom, $dw, $nomMin)
 	$sh = imagesy($im); // hauteur de l'image d'origine
 	$dh = $dw * $sh / $sw;
 
-	$im2 = imagecreatetruecolor($dw, $dh);
+// creation de l'image
+$im2 = imagecreatetruecolor($dw, $dh);
 
-	$dst_x = 0;
-	$dst_y = 0;
-	$src_x = 0;
-	$src_y = 0;
-	$dst_w = $dw;
-	$dst_h = $dh;
-	$src_w = $sw;
-	$src_h = $sh;
+// copie de $im dans $im2
+$dst_x = 0;
+$dst_y = 0;
+$src_x = 0;
+$src_y = 0;
+$dst_w = $dw;
+$dst_h = $dh;
+$src_w = $sw;
+$src_h = $sh;
+imagecopyresized($im2, $im, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h);
 
-	imagecopyresized($im2, $im, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h);
+//DEBUT TEXTE DATE
+	//$im2
+	// plusieurs couleurs
+	$white = imagecolorallocate($im2, 255, 255, 255);
+	$black = imagecolorallocate($im2, 0, 0, 0);
+	imagefilledrectangle($im2, 0, $dh, $dw, $dh-14, $white);
+
+	// le texte
+	$date = new DateTime($date);
+	$text = date_format($date, 'd/m/Y');
+
+	// font
+	$font = './font/unispace.ttf';
+
+	// ajout du texte
+	imagettftext($im2, 5, 0, $dw-55, $dh-4, $black, $font, $text);
+
+	//$im
+	// plusieurs couleurs
+	$whiteIm = imagecolorallocate($im, 255, 255, 255);
+	$blackIm = imagecolorallocate($im, 0, 0, 0);
+	imagefilledrectangle($im, 0, round($sh-($sh*3/100)), $sw, $sh, $whiteIm);
+
+	// ajout du texte
+	imagettftext($im, round($sh*1/100), 0, round($sw-($sw*15/100)), round($sh-($sh*1/100)), $blackIm, $font, $text);
+
+//FIN TEXTE DATE
+
+//DEBUT TEXTE LOCALISATION
+	//DEBUT Recuperation de l'adresse via API
+		//Debut zone de convertion des données GPS
+			$latitudeFinal = convertirGPS($latitude);
+			if ($latitudeRef == 'S' && $latitudeFinal != null){ //si le sud alors c'est négatif
+				$latitudeFinal = $latitude * -1;
+			}
+
+			$longitudeFinal = convertirGPS($longitude);
+			if ($longitudeRef == 'W' && $longitudeFinal != null){ //si L'ouest alors c'est négatif
+				$longitudeFinal = $longitude * -1;
+			}
+		//Fin zone de convertion des données GPS
+		//Debut zone API
+			if ($latitudeFinal != null && $latitudeFinal != 0 && $longitudeFinal != null && $longitudeFinal != 0){
+				$cle = '8963ac49c1744c6ea9e3e400ac71129c';
+				$language = 'fr';
+				$lien = "https://api.opencagedata.com/geocode/v1/json?q=" . strval($latitudeFinal) . "," . strval($longitudeFinal) . "&key=" . $cle . "&language=" . $language;
+	
+				$reponseArray = file_get_contents($lien);
+				$adresse = json_decode($reponseArray,true)['results'][0]['formatted'];
+			} else {
+				$adresse = "aucune adresse ABABARBARBRABRABBBBARRARARARRAABABARBARBRABRABBBBARRARARARRAABABARBARBRABRABBBBARRARARARRAABABARBARBRABRABBBBARRARARARRAABABARBARBRABRABBBBARRARARARRA";
+			}
+			
+		//Fin zone API
+	//FIN Recuperation de l'adresse via API
+	//DEBUT Texte
+		// plusieurs couleurs
+
+		// le texte
+		$text = $adresse;
+
+		// font
+		$font = './font/unispace.ttf';
+
+		// réglage du texte
+		$textIm = $text;
+		$taille = round((75 / 100 * $sw) / round($sh * 1 / 100));
+		if (strlen($textIm) > $taille){
+			$textIm = substr($textIm,0,$taille-4);
+			$textIm = $textIm . " ...";
+		}
+		$textIm2 = $text;
+		$taille = round((70 / 100 * $dw) / 5);
+		if (strlen($textIm2) > $taille){
+			$textIm2 = substr($textIm2,0,$taille-4);
+			$textIm2 = $textIm2 . "...";
+		}
+
+		// ajout du texte
+		imagettftext($im2, 5, 0, 0, $dh-4, $black, $font, $textIm2);
+		imagettftext($im, round($sh*1/100), 0, round($sh*1/100), round($sh-($sh*1/100)), $blackIm, $font, $textIm);
+	
+	//FIN Texte
+//FIN TEXTE LOCALISATION
+
+
+	switch ($type) {
+			case "jpeg" :
+				imagejpeg($im, $nomMin2);
+				break;
+			case "png" :
+				imagepng($im, $nomMin2);
+				break;
+			case "gif" :
+				imagegif($im, $nomMin2);
+				break;
+		}
+
+
 
 
 	switch ($type) {
@@ -189,12 +292,43 @@ function miniature($type, $nom, $dw, $nomMin)
 			imagegif($im2, $nomMin);
 			break;
 	}
-
 	imagedestroy($im);
 	imagedestroy($im2);
 }
+function diviser($donnee){ //permet de faire une division alors que c'est un string
+	$tampon = "";
+	$numerateur = 0;
+	$denominateur = 0;
+	foreach(str_split($donnee) as $i){
+		if ($i === '/'){
+			$numerateur = intval($tampon);
+			$tampon = "";
+		} else{
+			$tampon = $tampon . $i;
+		}
+	}
+	$denominateur = intval($tampon);
+	if ($denominateur != 0){
+		$numerateur = $numerateur / $denominateur;
+	} else {
+		$numerateur = 0;
+	}
+	
+	return $numerateur;
+}
+function convertirGPS($donnee){//permet de convertir 
+	if ($donnee === null){
+		return null;
+	}
+	$resultat = diviser($donnee[0]);
+	$resultat += diviser($donnee[1])/60;
+	$resultat += diviser($donnee[2])/3600;
+	return $resultat;
+}
 
 ?>
+
+
 
 <html lang="fr">
 <head>

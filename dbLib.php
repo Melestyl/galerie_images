@@ -111,7 +111,7 @@ function storeExifData($pdo, $image, $directory, $metadataArray) {
 			$key = $name.'_'.$key;
 
 			if (is_array($value)) // Utile pour le sous-tableau GPS, car il contient des sous-tableaux
-				$value = implode(", ", $value);
+				$value = implode(" | ", $value);
 
 			$value = substr($value, 0, 100); // Pour tronquer la chaine de caractère à 100 caractères, sinon erreur de longueur de chaine
 
