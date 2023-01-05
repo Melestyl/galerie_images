@@ -230,7 +230,7 @@ imagecopyresized($im2, $im, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src
 				$reponseArray = file_get_contents($lien);
 				$adresse = json_decode($reponseArray,true)['results'][0]['formatted'];
 			} else {
-				$adresse = "aucune adresse ABABARBARBRABRABBBBARRARARARRAABABARBARBRABRABBBBARRARARARRAABABARBARBRABRABBBBARRARARARRAABABARBARBRABRABBBBARRARARARRAABABARBARBRABRABBBBARRARARARRA";
+				$adresse = "Aucune adresse !";
 			}
 			
 		//Fin zone API
